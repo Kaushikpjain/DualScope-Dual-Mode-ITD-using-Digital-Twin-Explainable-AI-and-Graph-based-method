@@ -1,0 +1,521 @@
+================================================================================
+       INSIDER THREAT DETECTION SYSTEM USING DUAL-MODE BEHAVIORAL ANALYTICS
+                         WITH GRAPH-BASED FORENSIC VISUALIZATION
+================================================================================
+
+                              MINOR PROJECT REPORT
+
+================================================================================
+1. PROJECT IDEA
+================================================================================
+
+This project implements a comprehensive Insider Threat Detection System that
+identifies malicious or anomalous behavior by employees within an organization.
+Unlike traditional perimeter-based security systems that focus on external
+threats, this system monitors internal user behavior patterns — logins, file
+access, USB usage, email communications, and web browsing — to detect potential
+insider threats before damage occurs.
+
+The system uses a DUAL-MODE analytical approach:
+
+  MODE 1 — DIGITAL TWIN (Behavioral Profiling):
+    Each employee is modeled as a "digital twin" — a mathematical representation
+    of their normal behavioral patterns. The system continuously compares real
+    activity against this digital twin profile. When deviations are detected
+    (e.g., an employee suddenly accessing files at 3 AM, using USB drives for
+    the first time, or sending an unusual number of emails), the system flags
+    the behavior as anomalous.
+
+  MODE 2 — GRAPH-BASED STRUCTURAL ANALYSIS:
+    Each user is represented as a central node in an interactive force-directed
+    graph, with all their activities (logins, file access, USB usage, emails)
+    rendered as connected activity nodes. Edges carry context — timestamps,
+    frequency, duration. Activity nodes are color-coded by risk:
+      - GREEN  → Normal activity
+      - ORANGE → Medium-risk / suspicious activity
+      - RED    → High-risk / anomalous activity
+    This allows security analysts to visually identify behavioral deviations
+    and suspicious activity sequences for individual users.
+
+The project is built on the CERT Insider Threat Dataset (r4.2), which contains
+real organizational behavioral data with over 3.9 million events across 1,000
+employees over a multi-year period.
+
+
+================================================================================
+2. PROBLEM STATEMENT
+================================================================================
+
+Insider threats are one of the most damaging and difficult-to-detect security
+risks facing organizations today. According to the Ponemon Institute's 2023
+Cost of Insider Threats Global Report:
+
+  - The average annual cost of insider threats has risen to $15.38 million
+  - It takes an average of 85 days to contain an insider threat incident
+  - 56% of incidents are caused by negligent insiders
+  - Insider attacks are harder to detect than external cyberattacks
+
+Traditional security systems (firewalls, IDS/IPS, antivirus) are designed to
+defend against external threats and are largely blind to insiders who already
+have legitimate access to systems and data. There is a critical need for
+intelligent behavioral analytics systems that can:
+
+  1. Model normal employee behavior patterns
+  2. Detect deviations that indicate potential malicious activity
+  3. Provide forensic investigation tools for security analysts
+  4. Integrate psychometric (personality) data for richer risk profiling
+
+
+================================================================================
+3. WHAT WE DID — COMPLETE PROJECT PIPELINE
+================================================================================
+
+The project follows a complete end-to-end machine learning pipeline:
+
+  STEP 1: DATA PREPROCESSING
+  ─────────────────────────────────────────────────────────────────────────────
+  Raw CERT r4.2 dataset (14 GB) containing logs for:
+    - Logon/Logoff events     → preprocess_logon.py
+    - File access events      → preprocess_file.py
+    - USB device usage        → preprocess_device.py
+    - Email communications    → preprocess_email.py
+    - HTTP/Web browsing       → preprocess_http.py
+    - Psychometric surveys    → preprocess_psychometric.py
+
+  Each preprocessor cleans, normalizes, and structures the raw data:
+    - Timestamp standardization
+    - Event type classification
+    - User ID normalization
+    - Missing value handling
+    - Data type enforcement
+
+
+  STEP 2: FEATURE ENGINEERING
+  ─────────────────────────────────────────────────────────────────────────────
+  Three feature engineering pipelines:
+
+    a) build_user_features.py — Global user-level feature vectors
+       Aggregates all events per user into a single feature profile
+
+    b) build_weekly_features.py — Weekly behavioral feature vectors
+       For each user, for each week, computes:
+         - logon_count           (number of login events)
+         - after_hours_logons    (logins outside 8AM-6PM)
+         - file_events           (file access count)
+         - usb_events            (USB device usage count)
+         - email_events          (emails sent)
+         - http_requests         (web browsing count)
+         - unique_domains        (distinct websites visited)
+         - unique_topics         (distinct content topics)
+         - after_hours_requests  (web browsing after hours)
+         - weekend_requests      (weekend activity)
+         - O, C, E, A, N         (Big Five personality traits from psychometric data)
+
+    c) build_temporal_features.py — Time-series behavioral features
+       Captures temporal patterns and trends in user behavior
+
+
+  STEP 3: MACHINE LEARNING — ANOMALY DETECTION
+  ─────────────────────────────────────────────────────────────────────────────
+  Model: AUTOENCODER (Unsupervised Deep Learning)
+
+    Architecture:
+      Input Layer (15 features)
+        → Encoder: Linear(15→32) → ReLU → Linear(32→16) → ReLU → Linear(16→8)
+        → Latent Space (8 dimensions)
+        → Decoder: Linear(8→16) → ReLU → Linear(16→32) → ReLU → Linear(32→15)
+      Output Layer (15 reconstructed features)
+
+    Training:
+      - Trained on ALL weekly feature vectors (67,238 samples)
+      - Loss function: Mean Squared Error (MSE)
+      - The autoencoder learns to reconstruct "normal" behavioral patterns
+      - Anomalous behavior produces HIGH reconstruction error because
+        the model has never seen such patterns during training
+
+    Anomaly Detection (detect_anomalies.py):
+      - For each user's weekly feature vector, compute reconstruction error
+      - Weeks with reconstruction error above threshold = ANOMALOUS
+      - Threshold: Top 1% of reconstruction errors across all users
+      - Result: 673 anomalous weeks identified across 1,000 employees
+
+    Risk Scoring (anomaly_scores collection):
+      - Each user receives an overall risk score based on their average
+        reconstruction error across all weeks
+      - Top 10 users with highest risk scores are flagged as CONFIRMED THREATS
+      - Top 40 users are flagged as SUSPICIOUS
+
+
+  STEP 4: GRAPH CONSTRUCTION
+  ─────────────────────────────────────────────────────────────────────────────
+  build_email_graph.py:
+    - Builds network topology from email, file, and USB interactions
+    - Nodes: Users, files, devices
+    - Edges: Interactions with weights based on frequency
+
+  Per-user Activity Graph (built dynamically via API):
+    - Central user node → Activity Type nodes → Weekly Activity nodes
+    - Each weekly node carries: event count, after-hours %, weekend activity,
+      risk level, reconstruction error, PCs used
+    - Risk coloring: Green (normal), Orange (suspicious), Red (anomalous)
+
+
+  STEP 5: DATA LOADING INTO DATABASE
+  ─────────────────────────────────────────────────────────────────────────────
+  load_all_data.py loads all processed data into MongoDB:
+    - events:              3,951,531 records
+    - psychometric:        1,000 records
+    - http_features_raw:   1,000 records
+    - weekly_user_features: 67,238 records
+    - weekly_anomalies:    673 records
+    - anomaly_scores:      1,000 records
+
+
+  STEP 6: BACKEND API
+  ─────────────────────────────────────────────────────────────────────────────
+  FastAPI-based REST API with endpoints:
+    - GET /api/dashboard/summary        → System-wide risk overview
+    - GET /api/users                    → Paginated user list by risk
+    - GET /api/users/search?q=          → Search users by ID
+    - GET /api/users/{id}/behavior      → User's weekly behavioral data
+    - GET /api/users/{id}/explain       → XAI feature contribution analysis
+    - GET /api/graph/user/{id}          → Per-user activity graph data
+    - GET /api/graph/threats            → Network topology graph
+    - GET /api/analytics/overview       → Activity distribution & top risky users
+    - GET /api/analytics/timeline       → Weekly anomaly trend
+
+
+  STEP 7: FRONTEND DASHBOARD
+  ─────────────────────────────────────────────────────────────────────────────
+  React-based interactive dashboard with 7 pages:
+
+    1. DASHBOARD HUB — High-level system overview
+       - Monitored users count, total events, suspicious users, confirmed threats
+       - Threat user IDs displayed as badges
+       - Weekly anomaly trend chart
+
+    2. DIGITAL TWIN — Per-user behavioral profiling
+       - Search any user → view their weekly activity timeline
+       - Line charts showing behavioral feature trends over time
+       - Anomalous weeks highlighted
+       - XAI explanation of top contributing features
+
+    3. GRAPH ANALYSIS — Per-user activity graph visualization
+       - Search a user → dynamically builds their activity graph
+       - Force-directed graph: User → Activity Types → Weekly Activities
+       - Risk-colored nodes (green/orange/red)
+       - Interactive hover tooltips with activity details
+       - Click-to-inspect forensic detail panel
+
+    4. INSIDERS / THREATS — Ranked list of high-risk users
+       - Users sorted by reconstruction error (risk score)
+       - Risk level badges (CRITICAL/HIGH/MEDIUM/LOW)
+       - OCEAN personality profile display
+       - Anomalous weeks count per user
+
+    5. SEARCH USER — Find any employee by ID
+       - Real-time search against the database
+       - Quick risk assessment per result
+       - Navigate to detailed investigation
+
+    6. ANALYTICS — System-wide analytics
+       - Activity type distribution (pie chart)
+       - Top risky users (bar chart)
+       - Psychometric-risk correlation (scatter plot)
+
+    7. GRAPHS & CHARTS — Advanced visualizations
+       - Activity distribution breakdowns
+       - Anomaly timeline charts
+       - Risk trend analysis
+
+
+================================================================================
+4. TECHNOLOGIES USED
+================================================================================
+
+  CATEGORY              TECHNOLOGY           PURPOSE
+  ──────────────────────────────────────────────────────────────────────────────
+  Programming Lang.     Python 3.12          Backend, ML, data processing
+                        JavaScript (ES6+)    Frontend application
+
+  Machine Learning      PyTorch              Autoencoder neural network
+                        Scikit-learn         Data scaling (StandardScaler),
+                                             preprocessing utilities
+
+  Backend Framework     FastAPI              REST API server
+                        Uvicorn              ASGI server for FastAPI
+
+  Database              MongoDB              NoSQL document database for
+                                             storing events, features,
+                                             anomaly scores
+
+  Frontend Framework    React 18             Component-based UI framework
+                        Vite                 Fast build tool and dev server
+
+  Data Visualization    Recharts             Line, bar, pie, scatter charts
+                        react-force-graph-2d Force-directed graph rendering
+                                             (D3.js-based)
+                        Lucide React         Icon library
+
+  Routing               React Router v6      Client-side page navigation
+
+  HTTP Client           Axios                API communication
+
+  Data Processing       Pandas               CSV loading, data manipulation
+                        PyMongo              MongoDB driver for Python
+
+  UI Design             Custom CSS           Glassmorphism dark theme,
+                                             responsive layout
+
+
+================================================================================
+5. WHY IS THIS IDEA BETTER?
+================================================================================
+
+  5.1 COMPARED TO TRADITIONAL SECURITY SYSTEMS (Firewalls, IDS/IPS)
+  ─────────────────────────────────────────────────────────────────────────────
+  Traditional systems monitor network traffic and known attack signatures.
+  They CANNOT detect insiders who:
+    - Use legitimate credentials
+    - Access systems they are authorized to use
+    - Gradually exfiltrate data over time
+    - Behave normally most of the time but deviate subtly
+
+  OUR SYSTEM learns each user's INDIVIDUAL behavioral baseline and detects
+  even subtle deviations from their normal pattern, regardless of whether the
+  activity itself is "allowed."
+
+
+  5.2 COMPARED TO RULE-BASED INSIDER THREAT SYSTEMS
+  ─────────────────────────────────────────────────────────────────────────────
+  Rule-based systems use static thresholds (e.g., "flag if >100 files accessed
+  in one day"). These suffer from:
+    - High false positive rates (a data analyst may normally access 200 files)
+    - Easy to evade (stay just below the threshold)
+    - Cannot adapt to evolving behavior
+
+  OUR SYSTEM uses unsupervised learning that adapts to each user's unique
+  behavior pattern. A threshold for one user is different from another.
+
+
+  5.3 COMPARED TO SINGLE-MODE DETECTION SYSTEMS
+  ─────────────────────────────────────────────────────────────────────────────
+  Most insider threat tools offer either statistical analysis OR graph analysis,
+  but rarely both.
+
+  OUR DUAL-MODE approach provides:
+    - Digital Twin Mode for temporal behavioral profiling (WHEN does suspicious
+      behavior occur?)
+    - Graph Mode for structural relationship analysis (WHAT activities are
+      connected and how?)
+
+  Security analysts can cross-validate findings from both modes for
+  significantly higher confidence in threat detection.
+
+
+  5.4 COMPARED TO BLACK-BOX ML SYSTEMS
+  ─────────────────────────────────────────────────────────────────────────────
+  Many ML-based security tools provide alerts without explanation.
+
+  OUR SYSTEM provides:
+    - Explainable AI (XAI) feature contributions showing WHY a user is flagged
+    - Visual activity graphs showing WHAT specific activities are anomalous
+    - Risk-colored nodes for intuitive understanding
+    - Drill-down detail panels for forensic investigation
+
+  This transparency is critical for security analysts who need to justify
+  investigations and for legal compliance.
+
+
+  5.5 COMPARED TO SYSTEMS WITHOUT PSYCHOMETRIC INTEGRATION
+  ─────────────────────────────────────────────────────────────────────────────
+  Most systems only analyze digital footprints.
+
+  OUR SYSTEM integrates the Big Five personality traits (OCEAN model):
+    - Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism
+
+  Research shows that certain personality profiles correlate with higher
+  insider threat risk. By combining behavioral analytics with psychometric
+  data, our system provides a more holistic risk assessment.
+
+
+================================================================================
+6. ADVANTAGES OF THIS SYSTEM
+================================================================================
+
+  1. UNSUPERVISED LEARNING — No need for labeled "insider threat" training data.
+     The autoencoder learns normal patterns and flags deviations automatically.
+     This is critical because real insider threat incidents are extremely rare.
+
+  2. PER-USER BEHAVIORAL BASELINES — The system doesn't use one-size-fits-all
+     thresholds. Each user's "normal" is learned individually, reducing false
+     positives dramatically.
+
+  3. MULTI-DIMENSIONAL ANALYSIS — Combines 15+ behavioral features including
+     login patterns, file access, USB usage, email activity, web browsing,
+     after-hours activity, weekend activity, and personality traits.
+
+  4. TEMPORAL ANALYSIS — Weekly feature vectors capture behavioral trends over
+     time, allowing detection of gradual behavior changes (e.g., a
+     disgruntled employee slowly increasing data exfiltration).
+
+  5. INTERACTIVE FORENSIC VISUALIZATION — The graph-based analysis allows
+     security analysts to visually trace activity patterns, identify anomalous
+     weeks, and understand the structure of suspicious behavior.
+
+  6. REAL-TIME API — MongoDB-backed REST API enables real-time querying of
+     behavioral data, anomaly scores, and graph structures for any of the
+     1,000 monitored employees.
+
+  7. SCALABLE ARCHITECTURE — Processes 3.9 million+ events efficiently using
+     MongoDB aggregation pipelines and indexed queries. The system can
+     scale to larger organizations.
+
+  8. EXPLAINABILITY — XAI feature contribution analysis tells analysts exactly
+     which behavioral dimensions (e.g., "after_hours_logons increased 500%")
+     triggered the anomaly flag.
+
+  9. PSYCHOMETRIC ENRICHMENT — Big Five personality trait integration adds a
+     psychological dimension to risk assessment, providing richer profiles.
+
+  10. COMPREHENSIVE DASHBOARD — Seven-page interactive dashboard provides
+      everything from high-level system overview to granular per-user
+      forensic investigation in a single application.
+
+  11. PRIVACY-PRESERVING POTENTIAL — The autoencoder's latent space
+      representation could be extended to support confidential AI techniques,
+      where behavioral analysis is performed on encoded representations
+      without exposing raw activity logs.
+
+  12. LOW FALSE POSITIVE RATE — By combining autoencoder reconstruction error
+      with per-user baselines and psychometric context, the system achieves
+      more accurate flagging than systems using only digital activity data.
+
+
+================================================================================
+7. DATASET
+================================================================================
+
+  Name:     CERT Insider Threat Dataset (r4.2)
+  Source:   Carnegie Mellon University — Software Engineering Institute (SEI)
+  Size:     ~14 GB (raw), ~3.9 million processed events
+  Period:   Multi-year organizational data
+  Users:    1,000 employees
+
+  Data Types:
+    - Logon/Logoff:    Login and logout events with timestamps and PCs
+    - File Access:     File operations (copy, write, delete) with filenames
+    - USB Device:      USB connect/disconnect events
+    - Email:           Sent/received emails with recipients and attachments
+    - HTTP/Web:        Web browsing with URLs, domains, and content topics
+    - Psychometric:    Big Five personality survey results (OCEAN model)
+
+
+================================================================================
+8. PROJECT STRUCTURE
+================================================================================
+
+  Minor Project/
+  ├── preprocessing/              # Raw data cleaning and normalization
+  │   ├── preprocess_logon.py
+  │   ├── preprocess_email.py
+  │   ├── preprocess_file.py
+  │   ├── preprocess_device.py
+  │   ├── preprocess_http.py
+  │   └── preprocess_psychometric.py
+  │
+  ├── feature_engineering/        # Behavioral feature extraction
+  │   ├── build_user_features.py
+  │   ├── build_weekly_features.py
+  │   └── build_temporal_features.py
+  │
+  ├── ML/                         # Machine learning models
+  │   ├── train_autoencoder.py
+  │   ├── detect_anomalies.py
+  │   └── models/                 # Saved model weights (.pt, .pth, .pkl)
+  │
+  ├── graph/                      # Graph construction
+  │   ├── build_email_graph.py
+  │   └── data/network_graph.json
+  │
+  ├── processed_data/             # Processed CSV files
+  │
+  ├── backend/                    # FastAPI REST API
+  │   ├── main.py
+  │   ├── routes/api.py
+  │   └── services/db.py
+  │
+  ├── dashboard/                  # React frontend
+  │   └── src/
+  │       ├── App.jsx             # Main application (7 pages)
+  │       ├── api.js              # API client functions
+  │       └── index.css           # Glassmorphism dark theme
+  │
+  └── load_all_data.py            # MongoDB data ingestion script
+
+
+================================================================================
+9. HOW TO RUN
+================================================================================
+
+  Prerequisites:
+    - Python 3.12+
+    - Node.js 18+
+    - MongoDB (running locally on default port 27017)
+
+  Step 1: Load data into MongoDB
+    $ python load_all_data.py
+
+  Step 2: Start the backend API
+    $ cd backend
+    $ uvicorn main:app --reload --port 8000
+
+  Step 3: Start the frontend dashboard
+    $ cd dashboard
+    $ npm install
+    $ npm run dev
+
+  Step 4: Open the dashboard
+    → http://localhost:5173
+
+
+================================================================================
+10. RESULTS
+================================================================================
+
+  - Total Users Monitored:        1,000
+  - Total Events Processed:       3,951,531
+  - Weekly Feature Vectors:       67,238
+  - Anomalous Weeks Detected:     673
+  - Suspicious Users Identified:  40
+  - Confirmed Threat Users:       10
+
+  Top 5 Highest-Risk Users:
+    1. DLM0051 — Risk Score: 12.52 — 73 anomalous weeks
+    2. AJF0370 — Risk Score:  9.24 — 57 anomalous weeks
+    3. HSB0196 — Risk Score:  8.92 — 69 anomalous weeks
+    4. LBH0942 — Risk Score:  7.25 — 62 anomalous weeks
+    5. ATE0869 — Risk Score:  6.64 — 18 anomalous weeks
+
+
+================================================================================
+11. CONCLUSION
+================================================================================
+
+This project demonstrates a production-grade insider threat detection system
+that combines unsupervised deep learning (autoencoders) with psychometric
+profiling and interactive graph-based forensic visualization. The dual-mode
+approach — Digital Twin behavioral analysis and Graph-based structural
+analysis — provides security analysts with powerful tools to detect, investigate,
+and understand insider threats.
+
+The system successfully identifies high-risk users from real organizational
+data (CERT r4.2 dataset), provides explainable AI insights into why users
+are flagged, and offers an intuitive dashboard for forensic investigation.
+This approach addresses key limitations of traditional security systems by
+focusing on behavioral patterns rather than perimeter defense, making it
+significantly more effective against the growing threat of insider attacks.
+
+================================================================================
+                                    END OF REPORT
+================================================================================

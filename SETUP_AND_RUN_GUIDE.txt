@@ -1,0 +1,334 @@
+================================================================================
+     COMPLETE SETUP & RUN GUIDE — DualScope Insider Threat Detection System
+                          (For VS Code on Windows / macOS / Linux)
+================================================================================
+
+
+================================================================================
+PART 1: PREREQUISITES — INSTALL THESE FIRST
+================================================================================
+
+  Before opening the project, make sure you have the following installed:
+
+  1. VS CODE
+     → Download from: https://code.visualstudio.com/
+     → Install and open it
+
+  2. PYTHON 3.9+ (3.12 recommended)
+     → Download from: https://www.python.org/downloads/
+     → During installation, CHECK "Add Python to PATH"
+     → Verify: open terminal and type:
+        python --version        (should show 3.9 or above)
+
+  3. NODE.JS 18+ (with npm)
+     → Download from: https://nodejs.org/ (choose LTS version)
+     → Verify: open terminal and type:
+        node --version          (should show 18 or above)
+        npm --version           (should show 9 or above)
+
+  4. MONGODB (Community Edition)
+     → Download from: https://www.mongodb.com/try/download/community
+     → Install with default settings
+     → Make sure MongoDB is running on port 27017 (default)
+     → To start MongoDB:
+        macOS:    brew services start mongodb-community
+        Windows:  It runs as a service automatically after installation
+        Linux:    sudo systemctl start mongod
+
+  5. GIT (optional, for cloning)
+     → Download from: https://git-scm.com/downloads
+
+
+================================================================================
+PART 2: OPEN THE PROJECT IN VS CODE
+================================================================================
+
+  METHOD 1 — From File Explorer:
+    → Right-click the "Minor Project" folder
+    → Select "Open with Code" (or "Open with VS Code")
+
+  METHOD 2 — From VS Code:
+    → Open VS Code
+    → Go to File → Open Folder
+    → Navigate to and select the "Minor Project" folder
+    → Click "Open"
+
+  METHOD 3 — From Terminal:
+    → Open a terminal/command prompt
+    → Navigate to the project folder:
+       cd path/to/Minor Project
+    → Type:
+       code .
+
+
+================================================================================
+PART 3: INSTALL VS CODE EXTENSIONS (Recommended)
+================================================================================
+
+  Open the Extensions panel (Ctrl+Shift+X / Cmd+Shift+X) and install:
+
+    1. Python                → by Microsoft (for Python support)
+    2. Pylance              → by Microsoft (Python IntelliSense)
+    3. ES7+ React Snippets  → by dsznajder (for React/JSX)
+    4. MongoDB for VS Code  → by MongoDB (to browse database)
+
+
+================================================================================
+PART 4: CREATE PYTHON VIRTUAL ENVIRONMENT & INSTALL DEPENDENCIES
+================================================================================
+
+  Open the VS Code integrated terminal:
+    → Terminal → New Terminal  (or Ctrl+` / Cmd+`)
+
+  STEP 1: Create a virtual environment
+
+    macOS / Linux:
+      python3 -m venv .venv
+
+    Windows:
+      python -m venv .venv
+
+  STEP 2: Activate the virtual environment
+
+    macOS / Linux:
+      source .venv/bin/activate
+
+    Windows (Command Prompt):
+      .venv\Scripts\activate
+
+    Windows (PowerShell):
+      .venv\Scripts\Activate.ps1
+
+    → You should see (.venv) appear at the start of your terminal prompt
+
+  STEP 3: Install Python libraries
+
+    pip install pandas numpy pymongo torch scikit-learn fastapi uvicorn
+    pip install networkx joblib matplotlib
+
+  COMPLETE LIST OF PYTHON LIBRARIES REQUIRED:
+  ┌──────────────────────┬────────────────────────────────────────────┐
+  │ Library              │ Purpose                                    │
+  ├──────────────────────┼────────────────────────────────────────────┤
+  │ pandas               │ CSV loading, data manipulation             │
+  │ numpy                │ Numerical operations                       │
+  │ pymongo              │ MongoDB driver for Python                  │
+  │ torch (PyTorch)      │ Autoencoder neural network                 │
+  │ scikit-learn         │ StandardScaler, preprocessing              │
+  │ fastapi              │ REST API backend framework                 │
+  │ uvicorn              │ ASGI server for FastAPI                    │
+  │ networkx             │ Graph construction and PageRank            │
+  │ joblib               │ Saving/loading scaler model                │
+  │ matplotlib           │ Generating research paper charts           │
+  └──────────────────────┴────────────────────────────────────────────┘
+
+
+================================================================================
+PART 5: INSTALL FRONTEND (Node.js) DEPENDENCIES
+================================================================================
+
+  In the VS Code terminal, run:
+
+    cd dashboard
+    npm install
+
+  This will install all React dependencies listed in package.json:
+    - react, react-dom
+    - react-router-dom
+    - recharts
+    - react-force-graph-2d
+    - axios
+    - lucide-react
+    - vite, tailwindcss
+
+  Then go back to the project root:
+
+    cd ..
+
+
+================================================================================
+PART 6: EXECUTE THE SYSTEM — STEP BY STEP
+================================================================================
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  IMPORTANT: Steps 1–5 are ONE-TIME setup steps.                   │
+  │  After the first run, you only need Steps 6 and 7 to start.       │
+  └─────────────────────────────────────────────────────────────────────┘
+
+
+  ─── STEP 1: DATA PREPROCESSING (one-time) ──────────────────────────
+
+  Make sure you have the CERT r4.2 dataset files in the dataset/ folder:
+    - logon.csv, email.csv, file.csv, device.csv, http.csv, psychometric.csv
+
+  Run each preprocessor (from the project root):
+
+    python preprocessing/preprocess_logon.py
+    python preprocessing/preprocess_email.py
+    python preprocessing/preprocess_file.py
+    python preprocessing/preprocess_device.py
+    python preprocessing/preprocess_http.py
+    python preprocessing/preprocess_psychometric.py
+
+  → Cleaned files will be saved in processed_data/ folder
+
+
+  ─── STEP 2: FEATURE ENGINEERING (one-time) ─────────────────────────
+
+    python feature_engineering/build_weekly_features.py
+    python feature_engineering/build_user_features.py
+
+  → Generates 67,238 weekly feature vectors and 1,000 user profiles
+
+
+  ─── STEP 3: TRAIN THE AUTOENCODER MODEL (one-time) ─────────────────
+
+    python ML/train_ae.py
+
+  → Saves trained model to ML/models/temporal_ae.pt
+  → Saves scaler to ML/models/scaler.pkl
+
+
+  ─── STEP 4: DETECT ANOMALIES (one-time) ────────────────────────────
+
+    python ML/detect_anomalies.py
+
+  → Flags 673 anomalous weeks using 99th percentile threshold
+  → Stores results in MongoDB (weekly_anomalies collection)
+
+
+  ─── STEP 5: LOAD ALL DATA INTO MONGODB (one-time) ──────────────────
+
+    python load_all_data.py
+
+  → Loads all processed data into MongoDB:
+     events (3.9M), psychometric (1K), weekly_user_features (67K),
+     weekly_anomalies (673), anomaly_scores (1K)
+
+
+  ─── STEP 6: START THE BACKEND API SERVER ────────────────────────────
+
+  Open a NEW terminal in VS Code (Terminal → New Terminal):
+
+    cd backend
+    uvicorn main:app --reload --port 8000
+
+  → Backend API running at: http://localhost:8000
+  → API docs at: http://localhost:8000/docs
+
+  ⚠ Keep this terminal running! Do NOT close it.
+
+
+  ─── STEP 7: START THE FRONTEND DASHBOARD ────────────────────────────
+
+  Open ANOTHER NEW terminal in VS Code (Terminal → New Terminal):
+
+    cd dashboard
+    npm run dev
+
+  → Dashboard running at: http://localhost:5173
+
+  ⚠ Keep this terminal running too!
+
+
+  ─── STEP 8: OPEN THE DASHBOARD ─────────────────────────────────────
+
+  Open your browser and go to:
+
+    http://localhost:5173
+
+  You should see the DualScope Insider Threat Detection Dashboard
+  with 7 pages:
+    1. Dashboard Hub        → System overview and KPIs
+    2. Digital Twin         → Per-user behavioral analysis
+    3. Graph Analysis       → Interactive activity graphs
+    4. Insiders / Threats   → Ranked high-risk users
+    5. Search User          → Find any employee
+    6. Analytics            → Charts and distributions
+    7. Graphs & Charts      → Anomaly timeline
+
+
+================================================================================
+PART 7: QUICK START (After First-Time Setup)
+================================================================================
+
+  If you have already completed Steps 1–5 once, you only need:
+
+  1. Make sure MongoDB is running
+  2. Open the project in VS Code
+  3. Activate the virtual environment:
+       source .venv/bin/activate       (macOS/Linux)
+       .venv\Scripts\activate          (Windows)
+
+  4. Terminal 1 — Start Backend:
+       cd backend
+       uvicorn main:app --reload --port 8000
+
+  5. Terminal 2 — Start Frontend:
+       cd dashboard
+       npm run dev
+
+  6. Open http://localhost:5173 in your browser
+
+
+================================================================================
+PART 8: TROUBLESHOOTING
+================================================================================
+
+  PROBLEM: "ModuleNotFoundError: No module named 'xyz'"
+  FIX:     Make sure you activated the virtual environment first.
+           Then: pip install xyz
+
+  PROBLEM: "pymongo.errors.ServerSelectionTimeoutError"
+  FIX:     MongoDB is not running. Start it:
+           macOS:   brew services start mongodb-community
+           Windows: Start the MongoDB service from Services panel
+           Linux:   sudo systemctl start mongod
+
+  PROBLEM: "npm run dev" fails
+  FIX:     Run "npm install" in the dashboard/ folder first.
+
+  PROBLEM: Backend says "Address already in use"
+  FIX:     Port 8000 is occupied. Kill the old process or use:
+           uvicorn main:app --reload --port 8001
+
+  PROBLEM: Dashboard shows "Network Error" or blank data
+  FIX:     Make sure the backend is running on port 8000 first.
+           Check if data was loaded: python load_all_data.py
+
+  PROBLEM: "python" command not found
+  FIX:     Use "python3" instead (macOS/Linux)
+
+
+================================================================================
+PROJECT FOLDER STRUCTURE (for reference)
+================================================================================
+
+  Minor Project/
+  ├── .venv/                      ← Python virtual environment
+  ├── preprocessing/              ← Data cleaning scripts (Step 1)
+  ├── feature_engineering/        ← Feature extraction (Step 2)
+  ├── ML/                         ← Autoencoder training (Steps 3-4)
+  │   └── models/                 ← Saved model files
+  ├── graph/                      ← Graph construction
+  ├── explainability/             ← XAI module
+  ├── backend/                    ← FastAPI server (Step 6)
+  │   ├── main.py
+  │   ├── routes/api.py
+  │   └── services/db.py
+  ├── dashboard/                  ← React frontend (Step 7)
+  │   ├── package.json
+  │   └── src/
+  │       ├── App.jsx
+  │       ├── api.js
+  │       └── index.css
+  ├── dataset/                    ← Raw CERT r4.2 CSV files
+  ├── processed_data/             ← Cleaned CSV output
+  ├── load_all_data.py            ← MongoDB data loader (Step 5)
+  ├── generate_research_charts.py ← Research paper chart generator
+  ├── MATHEMATICAL_MODEL.md       ← Formulas and algorithms
+  └── PROJECT_REPORT.txt          ← Full project report
+
+================================================================================
+                                END OF GUIDE
+================================================================================

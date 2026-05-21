@@ -1,0 +1,102 @@
+================================================================================
+           HOW TO RUN — INSIDER THREAT DETECTION SYSTEM
+================================================================================
+
+PREREQUISITES:
+  - Python 3.12+
+  - Node.js 18+
+  - MongoDB running locally on port 27017
+
+
+================================================================================
+STEP 1: DATA PREPROCESSING (Run once)
+================================================================================
+
+  cd preprocessing
+  python preprocess_logon.py
+  python preprocess_email.py
+  python preprocess_file.py
+  python preprocess_device.py
+  python preprocess_http.py
+  python preprocess_psychometric.py
+
+
+================================================================================
+STEP 2: FEATURE ENGINEERING (Run once)
+================================================================================
+
+  cd feature_engineering
+  python build_weekly_features.py
+  python build_user_features.py
+
+
+================================================================================
+STEP 3: TRAIN AUTOENCODER MODEL (Run once)
+================================================================================
+
+  cd ML
+  python train_autoencoder.py
+
+
+================================================================================
+STEP 4: DETECT ANOMALIES (Run once)
+================================================================================
+
+  cd ML
+  python detect_anomalies.py
+
+
+================================================================================
+STEP 5: BUILD GRAPH DATA (Run once)
+================================================================================
+
+  cd graph
+  python build_email_graph.py
+
+
+================================================================================
+STEP 6: LOAD ALL DATA INTO MONGODB (Run once)
+================================================================================
+
+  python load_all_data.py
+
+
+================================================================================
+STEP 7: START THE BACKEND API SERVER
+================================================================================
+
+  cd backend
+  uvicorn main:app --reload --port 8000
+
+  Backend will be running at: http://localhost:8000
+  API docs available at:      http://localhost:8000/docs
+
+
+================================================================================
+STEP 8: START THE FRONTEND DASHBOARD
+================================================================================
+
+  cd dashboard
+  npm install        # (only needed first time)
+  npm run dev
+
+  Dashboard will be running at: http://localhost:5173
+
+
+================================================================================
+QUICK START (If data is already loaded in MongoDB)
+================================================================================
+
+  # Terminal 1 — Start Backend
+  cd backend
+  uvicorn main:app --reload --port 8000
+
+  # Terminal 2 — Start Frontend
+  cd dashboard
+  npm run dev
+
+  # Open browser
+  http://localhost:5173
+
+
+================================================================================

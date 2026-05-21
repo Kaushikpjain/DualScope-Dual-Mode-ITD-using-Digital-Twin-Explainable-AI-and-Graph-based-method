@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@theme {
+  --color-dark-900: #0a0a0f;
+  --color-dark-800: #13131a;
+  --color-dark-700: #1c1c24;
+  --color-primary-500: #3b82f6;
+  --color-primary-400: #60a5fa;
+  --color-accent-500: #8b5cf6;
+  --color-accent-400: #a78bfa;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-dark-900);
+    color: #e2e8f0;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    background-color: color-mix(in srgb, var(--color-dark-800) 80%, transparent);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 0.75rem;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
+
+  .glass-card {
+    background-color: color-mix(in srgb, var(--color-dark-700) 50%, transparent);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    transition-property: all;
+    transition-duration: 300ms;
+  }
+
+  .glass-card:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .glow-red {
+    box-shadow: 0 0 20px -5px rgba(239, 68, 68, 0.5);
+  }
+
+  .glow-orange {
+    box-shadow: 0 0 20px -5px rgba(249, 115, 22, 0.4);
+  }
+
+  .text-gradient {
+    background-clip: text;
+    color: transparent;
+    background-image: linear-gradient(to right, var(--color-primary-400), var(--color-accent-400));
+  }
+}
