@@ -1,3 +1,81 @@
+# ============================================
+# DualScope — .gitignore
+# Python / ML / Node.js / MongoDB Project
+# ============================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# --- Virtual Environment ---
+.venv/
+venv/
+ENV/
+env/
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- ML Model Artifacts (optional: uncomment to track) ---
+# ML/models/*.pt
+# ML/models/*.pth
+# ML/models/*.pkl
+
+# --- Dataset (DO NOT COMMIT — too large) ---
 dataset/
 processed_data/
 *.csv
+
+# --- Node.js / Frontend ---
+dashboard/node_modules/
+dashboard/dist/
+dashboard/.env
+node_modules/
+
+# --- MongoDB ---
+*.bson
+dump/
+
+# --- Environment Variables ---
+.env
+.env.local
+.env.production
+
+# --- OS Generated ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# --- Logs ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Package Locks (root level only) ---
+package-lock.json
+
+# --- Misc ---
+*.tmp
+*.bak
+*.orig
+.gemini/

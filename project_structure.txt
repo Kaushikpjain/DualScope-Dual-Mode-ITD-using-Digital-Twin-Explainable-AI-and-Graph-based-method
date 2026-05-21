@@ -1,0 +1,114 @@
+================================================================================
+        DualScope — Project Structure
+        Insider Threat Detection System
+================================================================================
+
+DualScope/
+│
+├── 📄 README.md                         # Project documentation
+├── 📄 requirements.txt                  # Python dependencies
+├── 📄 .gitignore                        # Git ignore rules
+├── 📄 LICENSE                           # MIT License
+├── 📄 MATHEMATICAL_MODEL.md             # Formal mathematical documentation
+├── 📄 HOW_TO_RUN.txt                    # Quick start guide
+├── 📄 PROJECT_REPORT.txt                # Detailed project report
+├── 📄 SETUP_AND_RUN_GUIDE.txt           # Extended setup instructions
+│
+├── 🔧 load_all_data.py                  # Master MongoDB ingestion script
+├── 📊 evaluate_detection.py             # Evaluation vs CERT r4.2 ground truth
+├── 📊 generate_confusion_matrix.py      # Confusion matrix generation
+├── 📊 generate_roc_curve.py             # ROC curve generation
+├── 📊 generate_research_charts.py       # Publication-ready figures
+│
+├── 📁 preprocessing/                    # Step 1: Raw data cleaning
+│   ├── preprocess_logon.py              #   Logon/logoff event cleaning
+│   ├── preprocess_email.py              #   Email communication cleaning
+│   ├── preprocess_file.py               #   File access event cleaning
+│   ├── preprocess_device.py             #   USB device event cleaning
+│   ├── preprocess_http.py               #   HTTP/web browsing (streaming)
+│   └── preprocess_psychometric.py       #   Big Five personality data
+│
+├── 📁 feature_engineering/              # Step 2: Behavioral feature extraction
+│   ├── build_user_features.py           #   Global user-level feature vectors
+│   ├── build_weekly_features.py         #   Weekly temporal digital twins
+│   └── build_temporal_features.py       #   Time-series features
+│
+├── 📁 ML/                               # Step 3: Machine learning models
+│   ├── train_autoencoder.py             #   Train autoencoder (user-level)
+│   ├── train_temporal_autoencoder.py    #   Train temporal autoencoder
+│   ├── train_ae.py                      #   Alternative AE trainer
+│   ├── detect_anomalies.py             #   Anomaly detection (99th percentile)
+│   ├── count_anomaly.py                 #   Anomaly count statistics
+│   ├── score_temporal_anomalies.py      #   Temporal anomaly scoring
+│   └── models/                          #   Saved model weights
+│       ├── temporal_ae.pt               #     PyTorch model weights
+│       ├── temporal_ae.pth              #     PyTorch model (alternate)
+│       └── scaler.pkl                   #     StandardScaler (joblib)
+│
+├── 📁 graph/                            # Step 4: Graph construction
+│   ├── build_email_graph.py             #   Email/File/USB network graph
+│   ├── graph_anomaly.py                 #   Graph-based anomaly analysis
+│   └── data/
+│       └── network_graph.json           #   Exported graph (D3-compatible)
+│
+├── 📁 explainability/                   # Explainable AI module
+│   └── explain_user.py                  #   Feature deviation analysis
+│
+├── 📁 ensemble/                         # Ensemble scoring
+│   └── combine_scores.py               #   Multi-signal risk aggregation
+│
+├── 📁 data_loader/                      # MongoDB data loaders
+│   ├── load_events.py                   #   Load event data
+│   ├── load_http_features.py            #   Load HTTP features
+│   └── load_psychometric.py             #   Load psychometric data
+│
+├── 📁 backend/                          # FastAPI REST API server
+│   ├── main.py                          #   App entry point + CORS config
+│   ├── requirements.txt                 #   Backend-specific deps
+│   ├── routes/
+│   │   └── api.py                       #   9+ API endpoint definitions
+│   └── services/
+│       └── db.py                        #   MongoDB queries & aggregations
+│
+├── 📁 dashboard/                        # React frontend (Vite)
+│   ├── package.json                     #   Node.js dependencies
+│   ├── index.html                       #   HTML entry point
+│   ├── vite.config.js                   #   Vite configuration
+│   ├── eslint.config.js                 #   ESLint configuration
+│   └── src/
+│       ├── App.jsx                      #   Main application (7 pages)
+│       ├── api.js                       #   Axios API client
+│       ├── main.jsx                     #   React DOM entry point
+│       ├── App.css                      #   Component styles
+│       ├── index.css                    #   Global glassmorphism theme
+│       └── assets/                      #   Static assets
+│
+├── 📁 research_figures/                 # Generated publication charts
+│   ├── fig_top_risky_users.png
+│   ├── fig_activity_distribution.png
+│   ├── fig_risk_distribution.png
+│   ├── fig_xai_contributions.png
+│   ├── fig_training_loss.png
+│   ├── fig_anomaly_timeline.png
+│   ├── fig_system_statistics.png
+│   └── fig_approach_comparison.png
+│
+├── 📁 dataset/                          # Raw CERT r4.2 data (NOT in repo)
+│   ├── logon.csv                        #   ~58 MB
+│   ├── device.csv                       #   ~29 MB
+│   ├── file.csv                         #   ~193 MB
+│   ├── psychometric.csv                 #   ~45 KB
+│   └── LDAP/                            #   Monthly employee records
+│       └── *.csv                        #   (18 monthly files)
+│
+└── 📁 processed_data/                   # Cleaned data (NOT in repo)
+    ├── logon_clean.csv                  #   ~37 MB
+    ├── email_clean.csv                  #   ~1.4 GB
+    ├── file_clean.csv                   #   ~200 MB
+    ├── device_clean.csv                 #   ~34 MB
+    ├── http_features.csv                #   ~48 KB
+    └── psychometric_clean.csv           #   ~106 KB
+
+================================================================================
+  Legend:  📄 Documentation  🔧 Scripts  📊 Analysis  📁 Directory
+================================================================================
