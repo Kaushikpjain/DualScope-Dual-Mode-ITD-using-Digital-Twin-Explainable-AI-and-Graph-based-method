@@ -141,88 +141,44 @@ def get_user_psychometric(user_id: str):
 
 def get_user_explain(user_id: str):
     """
-    Enhanced XAI: Compute feature-level contribution to anomaly for a user.
+    Enhanced XAI: Compute feature-level contribution to anomaly for a user using SHAP.
     Returns 1-100 scaled scores, natural language explanation, and risk breakdown.
     """
     if db is None:
         return {}
 
-    FEATURE_COLS = [
-        "logon_count", "after_hours_logons", "file_events",
-        "usb_events", "email_events", "http_requests",
-        "unique_domains", "unique_topics",
-        "after_hours_requests", "weekend_requests"
-    ]
-
-    FEATURE_LABELS = {
-        "logon_count": "Login Activity",
-        "after_hours_logons": "After-Hours Logins",
-        "file_events": "File Access",
-        "usb_events": "USB Device Usage",
-        "email_events": "Email Activity",
-        "http_requests": "Web Browsing",
-        "unique_domains": "Unique Websites",
-        "unique_topics": "Content Topics",
-        "after_hours_requests": "After-Hours Browsing",
-        "weekend_requests": "Weekend Activity"
-    }
-
-    user_weeks = list(
-        db["weekly_user_features"].find({"user_id": user_id}, {"_id": 0})
-    )
-    if not user_weeks:
+    import sys
+    # Add project root to path to import explainability
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    if project_root not in sys.path:
+        sys.path.append(project_root)
+        
+    try:
+        from explainability.explain_user import get_shap_contributions
+    except ImportError as e:
+        print(f"Error importing explain_user: {e}")
         return {}
 
-    # User averages
-    user_avg = {}
-    for f in FEATURE_COLS:
-        vals = [w.get(f, 0) for w in user_weeks]
-        user_avg[f] = sum(vals) / len(vals) if vals else 0
-
-    # Global averages (sample 5000 docs for speed)
-    global_sample = list(db["weekly_user_features"].aggregate([
-        {"$sample": {"size": 5000}},
-        {"$group": {
-            "_id": None,
-            **{f: {"$avg": f"${f}"} for f in FEATURE_COLS}
-        }}
-    ]))
-
-    if not global_sample:
+    raw_contributions = get_shap_contributions(user_id, db)
+    if not raw_contributions:
         return {}
-    global_avg = global_sample[0]
 
-    # Deviation-based contributions (raw)
-    raw_deviations = []
-    for f in FEATURE_COLS:
-        g = global_avg.get(f, 0) or 1
-        deviation = abs(user_avg[f] - g) / abs(g) if g else 0
-        direction = "above" if user_avg[f] > g else "below"
-        raw_deviations.append({
-            "feature": f,
-            "label": FEATURE_LABELS.get(f, f),
-            "user_value": round(user_avg[f], 2),
-            "global_avg": round(g, 2),
-            "raw_deviation": round(deviation, 4),
-            "direction": direction
-        })
+    # Scale SHAP values to 1-100 for the UI
+    max_shap = max(c["shap_importance"] for c in raw_contributions) if raw_contributions else 1
+    if max_shap == 0:
+        max_shap = 1
 
-    # Scale deviations to 1-100
-    max_dev = max(d["raw_deviation"] for d in raw_deviations) if raw_deviations else 1
-    if max_dev == 0:
-        max_dev = 1
-
-    for d in raw_deviations:
-        d["score"] = max(1, min(100, round(d["raw_deviation"] / max_dev * 100)))
-
-    raw_deviations.sort(key=lambda x: x["score"], reverse=True)
-    contributions = raw_deviations[:8]
+    contributions = []
+    for c in raw_contributions:
+        c["score"] = max(1, min(100, round((c["shap_importance"] / max_shap) * 100)))
+        contributions.append(c)
 
     # Get anomaly score and risk level (using percentile-based thresholds)
     score_doc = db["anomaly_scores"].find_one({"user_id": user_id}, {"_id": 0})
     risk_score = score_doc.get("reconstruction_error", 0) if score_doc else 0
 
     anomaly_count = db["weekly_anomalies"].count_documents({"user_id": user_id})
+    user_weeks = list(db["weekly_user_features"].find({"user_id": user_id}, {"_id": 0}))
     total_weeks = len(user_weeks)
 
     # Compute percentile thresholds from all users
@@ -249,19 +205,18 @@ def get_user_explain(user_id: str):
     top3 = contributions[:3]
     reasons = []
     for c in top3:
-        pct = round(c["raw_deviation"] * 100)
         if c["direction"] == "above":
-            reasons.append(f'{c["label"]} is {pct}% above the organizational average '
+            reasons.append(f'{c["label"]} (SHAP importance: {c["shap_importance"]:.4f}) is higher than the organizational average '
                           f'(user: {c["user_value"]:.1f} vs avg: {c["global_avg"]:.1f})')
         else:
-            reasons.append(f'{c["label"]} is {pct}% below the organizational average '
+            reasons.append(f'{c["label"]} (SHAP importance: {c["shap_importance"]:.4f}) is lower than the organizational average '
                           f'(user: {c["user_value"]:.1f} vs avg: {c["global_avg"]:.1f})')
 
     summary = (
         f'User {user_id} was flagged as {risk_level} risk with a reconstruction error of '
         f'{risk_score:.4f}. The system detected {anomaly_count} anomalous weeks out of '
         f'{total_weeks} total weeks monitored. '
-        f'The primary reasons for flagging are: {"; ".join(reasons)}.'
+        f'The primary reasons for flagging (based on SHAP values) are: {"; ".join(reasons)}.'
     )
 
     return {
